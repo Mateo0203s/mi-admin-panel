@@ -24,3 +24,7 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.main-content {
+    margin-left: 250px; /* Coincide con el ancho del sidebar */
+}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-// Interfaz para definir la estructura de un Producto
+// ... (La interfaz Product no cambia)
 interface Product {
   id?: string;
   name: string;
@@ -13,7 +13,6 @@ interface Product {
   status: 'activo' | 'inactivo';
 }
 
-// Interfaz para definir las propiedades que recibe este componente
 interface ProductFormProps {
   product: Product | null;
   onSave: (product: Product) => void;
@@ -38,7 +37,6 @@ export default function ProductForm({ product, onSave, onCancel }: ProductFormPr
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    // Usamos Number() para los campos numéricos para asegurar que el tipo de dato sea correcto
     const newValue = e.target.type === 'number' ? Number(value) : value;
     setFormData(prev => ({ ...prev, [name]: newValue }));
   };
@@ -61,10 +59,17 @@ export default function ProductForm({ product, onSave, onCancel }: ProductFormPr
           <option value="huevo">Huevo</option>
         </select>
       </div>
-      <div style={{ marginBottom: '15px' }}>
-        <label>Stock:</label>
-        <input type="number" name="stock_quantity" value={formData.stock_quantity} onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
-      </div>
+
+      {/* --- INICIO DE LA CORRECCIÓN --- */}
+      {/* Este bloque solo se mostrará si el tipo de producto es 'huevo' */}
+      {formData.type === 'huevo' && (
+        <div style={{ marginBottom: '15px' }}>
+          <label>Stock:</label>
+          <input type="number" name="stock_quantity" value={formData.stock_quantity} onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
+        </div>
+      )}
+      {/* --- FIN DE LA CORRECCIÓN --- */}
+
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
         <div style={{ flex: 1 }}>
           <label>Precio Costo:</label>

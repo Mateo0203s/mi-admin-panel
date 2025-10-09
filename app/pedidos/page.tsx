@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { useRouter } from 'next/navigation' // <-- 1. IMPORTAMOS useRouter
+import { useRouter } from 'next/navigation'
 
 // ... (la interfaz 'Order' y el tipo 'StatusFilter' no cambian)
 interface Order {
@@ -20,10 +20,9 @@ export default function PedidosPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<StatusFilter>('confirmado')
-  const router = useRouter() // <-- 2. INICIALIZAMOS el router
+  const router = useRouter()
 
   useEffect(() => {
-    // ... (la función fetchOrders no cambia)
     const fetchOrders = async () => {
       setLoading(true)
       let query = supabase.from('orders').select('*, users(full_name)').order('created_at', { ascending: false })
@@ -41,56 +40,76 @@ export default function PedidosPage() {
     fetchOrders()
   }, [filter])
 
+  // Función para los badges de estado
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'confirmado': return 'bg-warning text-dark';
+      case 'facturado': return 'bg-primary';
+      case 'archivado': return 'bg-secondary';
+      case 'cancelado': return 'bg-danger';
+      default: return 'bg-light text-dark';
+    }
+  }
+
   return (
-    <div>
-      {/* ... (el header y los botones de filtro no cambian) */}
-      <header style={{ marginBottom: '30px' }}>
-        <h1>Gestión de Pedidos</h1>
-        <p>Visualiza y gestiona el estado de todos los pedidos.</p>
-      </header>
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <button onClick={() => setFilter('confirmado')} disabled={filter === 'confirmado'}>Confirmados</button>
-        <button onClick={() => setFilter('facturado')} disabled={filter === 'facturado'}>Facturados</button>
-        <button onClick={() => setFilter('archivado')} disabled={filter === 'archivado'}>Archivados</button>
-        <button onClick={() => setFilter('todos')} disabled={filter === 'todos'}>Todos</button>
+    // --- INICIO DE LA ACTUALIZACIÓN VISUAL ---
+    <div className="container mt-4">
+      <h1 className="h2">📦 Gestión de Pedidos</h1>
+      <p className="text-muted">Visualiza y gestiona el estado de todos los pedidos.</p>
+      
+      <div className="btn-group mb-4" role="group">
+        <button type="button" onClick={() => setFilter('confirmado')} className={`btn ${filter === 'confirmado' ? 'btn-primary' : 'btn-outline-primary'}`}>Confirmados</button>
+        <button type="button" onClick={() => setFilter('facturado')} className={`btn ${filter === 'facturado' ? 'btn-primary' : 'btn-outline-primary'}`}>Facturados</button>
+        <button type="button" onClick={() => setFilter('archivado')} className={`btn ${filter === 'archivado' ? 'btn-primary' : 'btn-outline-primary'}`}>Archivados</button>
+        <button type="button" onClick={() => setFilter('todos')} className={`btn ${filter === 'todos' ? 'btn-primary' : 'btn-outline-primary'}`}>Todos</button>
       </div>
 
-      {loading ? (
-        <p>Cargando pedidos...</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            {/* ... (el thead no cambia) */}
-            <tr style={{ borderBottom: '2px solid black' }}>
-              <th style={{ textAlign: 'left', padding: '8px' }}>Cliente</th>
-              <th style={{ textAlign: 'left', padding: '8px' }}>Fecha</th>
-              <th style={{ textAlign: 'left', padding: '8px' }}>Estado</th>
-              <th style={{ textAlign: 'center', padding: '8px' }}>Pagado</th>
-              <th style={{ textAlign: 'right', padding: '8px' }}>Monto Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              // --- INICIO DE LOS CAMBIOS ---
-              <tr 
-                key={order.id} 
-                style={{ borderBottom: '1px solid #ddd', cursor: 'pointer' }}
-                onClick={() => router.push(`/pedidos/${order.id}`)} // <-- 3. AÑADIMOS EL EVENTO onClick
-              >
-              {/* --- FIN DE LOS CAMBIOS --- */}
-                <td style={{ padding: '8px' }}>{order.users?.full_name || 'N/A'}</td>
-                <td style={{ padding: '8px' }}>{new Date(order.created_at).toLocaleDateString('es-AR')}</td>
-                <td style={{ padding: '8px', textTransform: 'capitalize' }}>{order.status}</td>
-                <td style={{ textAlign: 'center', padding: '8px' }}>{order.is_paid ? '✅' : '❌'}</td>
-                <td style={{ textAlign: 'right', padding: '8px' }}>
-                  {order.total_amount ? `$${order.total_amount.toLocaleString('es-AR')}` : '-'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      { !loading && orders.length === 0 && <p>No se encontraron pedidos con el filtro actual.</p> }
+      <div className="card shadow-sm">
+        <div className="card-body">
+          {loading ? (
+            <div className="text-center p-5">Cargando pedidos...</div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead className="table-light">
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th className="text-center">Pagado</th>
+                    <th className="text-end">Monto Total</th>
+                    <th className="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order) => (
+                    <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/pedidos/${order.id}`)}>
+                      <td>{order.users?.full_name || 'N/A'}</td>
+                      <td>{new Date(order.created_at).toLocaleDateString('es-AR')}</td>
+                      <td>
+                        <span className={`badge rounded-pill ${getStatusBadge(order.status)}`}>
+                          {order.status}
+                        </span>
+                      </td>
+                      <td className="text-center">{order.is_paid ? '✅' : '❌'}</td>
+                      <td className="text-end">
+                        {order.total_amount ? `$${order.total_amount.toLocaleString('es-AR')}` : '-'}
+                      </td>
+                      <td className="text-end">
+                        <button className="btn btn-sm btn-outline-primary">
+                          <i className="fas fa-eye"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          { !loading && orders.length === 0 && <p className="text-center p-4">No se encontraron pedidos con el filtro actual.</p> }
+        </div>
+      </div>
     </div>
+    // --- FIN DE LA ACTUALIZACIÓN VISUAL ---
   )
 }

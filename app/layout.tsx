@@ -1,5 +1,7 @@
-import './globals.css' // Asumimos que este archivo existe para estilos globales
+import './globals.css'
 import Sidebar from './components/Sidebar'
+// Importamos Head para añadir los links de CSS y JS
+import Head from 'next/head'
 
 export default function RootLayout({
   children,
@@ -8,15 +10,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
+      <head>
+        {/* Links a Bootstrap CSS y Font Awesome */}
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+      </head>
       <body>
         <div style={{ display: 'flex' }}>
-          {/* El Sidebar es fijo y siempre visible */}
           <Sidebar />
-          {/* 'children' es el contenido de la página actual (ej. Dashboard, Pedidos, etc.) */}
-          <main style={{ flex: 1, padding: '20px' }}>
+          {/* Añadimos la clase 'main-content' del preview */}
+          <main className="main-content" style={{ flex: 1, padding: '20px' }}>
             {children}
           </main>
         </div>
+        {/* Script de Bootstrap, necesario para componentes interactivos como dropdowns */}
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" async></script>
       </body>
     </html>
   )
