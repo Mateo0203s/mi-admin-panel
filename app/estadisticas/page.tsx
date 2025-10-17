@@ -11,25 +11,42 @@ interface BusinessReport {
   top_products_by_profit: { name: string; total_profit_generated: number }[];
   top_clients_by_profit: { full_name: string; total_profit_generated: number }[];
 }
+interface TopProductByQuantity {
+  producto: string;
+  cantidad_total: number;
+}
 
 export default function EstadisticasPage() {
   const [data, setData] = useState<BusinessReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState(30); // Por defecto, últimos 30 días
-
+  const [topProductsByQuantity, setTopProductsByQuantity] = useState<TopProductByQuantity[]>([]);
   useEffect(() => {
     const fetchBusinessReport = async () => {
       setLoading(true);
-      // Llamamos a la nueva y potente función RPC
-      const { data: rpcData, error } = await supabase.rpc('get_business_report', { period_days: period });
-      
-      if (error) {
-        console.error("Error fetching business report:", error);
+
+      // Ejecutamos ambas llamadas en paralelo para mayor eficiencia
+      const [businessReportResponse, topQuantityResponse] = await Promise.all([
+        supabase.rpc('get_business_report', { period_days: period }),
+        supabase.rpc('get_top_products_by_quantity', { period_days: period })
+      ]);
+
+      // Procesamos el resultado del informe de negocio
+      if (businessReportResponse.error) {
+        console.error("Error fetching business report:", businessReportResponse.error);
         setData(null);
       } else {
-        // La función devuelve un array con un solo objeto
-        setData(rpcData[0]);
+        setData(businessReportResponse.data[0]);
       }
+
+      // Procesamos el resultado del top de productos por cantidad
+      if (topQuantityResponse.error) {
+        console.error("Error fetching top products by quantity:", topQuantityResponse.error);
+        setTopProductsByQuantity([]);
+      } else {
+        setTopProductsByQuantity(topQuantityResponse.data);
+      }
+
       setLoading(false);
     };
 
@@ -138,6 +155,24 @@ export default function EstadisticasPage() {
           </div>
         </div>
       </div>
+      <div className="row">
+          {/* NUEVA TARJETA: PRODUCTOS POR CANTIDAD (BULTOS) */}
+          <div className="col-lg-4 mb-4">
+              <div className="card shadow-sm h-100">
+                  <div className="card-header"><h5 className="mb-0">📦 Top Productos (por Cantidad)</h5></div>
+                  <ul className="list-group list-group-flush">
+                      {topProductsByQuantity.map((product, index) => (
+                          <li key={`${product.producto}-${index}`} className="list-group-item d-flex justify-content-between align-items-center">
+                              {product.producto}
+                              <span className="badge bg-info rounded-pill">{product.cantidad_total.toLocaleString('es-AR')}</span>
+                          </li>
+                      ))}
+                  </ul>
+              </div>
+          </div>
+        </div> 
+
     </div>
+    
   );
 }

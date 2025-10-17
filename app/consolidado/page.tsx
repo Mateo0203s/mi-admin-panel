@@ -3,49 +3,54 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-interface ConsolidatedItem {
-  producto_nombre: string;
+interface ConsolidadoItem {
+  producto: string;
   cantidad_total: number;
-  costo_estimado: number;
+  costo_flete_total: number;
 }
-// Definimos los tipos de pestañas que tendremos
-type TabType = 'Total' | 'Normal' | 'CostoConFlete';
+type FilterType = 'Todos' | 'Normal' | 'Con Flete';
 
 export default function ConsolidadoPage() {
-  const [items, setItems] = useState<ConsolidatedItem[]>([]);
+  const [items, setItems] = useState<ConsolidadoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalCost, setTotalCost] = useState(0);
-  const [activeTab, setActiveTab] = useState<TabType>('Total'); // Estado para la pestaña activa
+  const [totalFreightCost, setTotalFreightCost] = useState(0);
+  const [activeTab, setActiveTab] = useState<FilterType>('Todos');
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
   useEffect(() => {
     const fetchConsolidado = async () => {
       setLoading(true);
-      
-      // --- INICIO DE LA CORRECCIÓN ---
-      // Mapeamos el nombre de la pestaña al parámetro que espera la función RPC
-      const rpcParams = activeTab === 'Total' ? {} : { p_client_type: activeTab };
-      
-      const { data, error } = await supabase.rpc('get_consolidado_facturado', rpcParams);
-      // --- FIN DE LA CORRECCIÓN ---
+      const { data, error } = await supabase.rpc('get_consolidado', {
+        p_filter_type: activeTab
+      });
       
       if (error) {
         console.error("Error al cargar el consolidado:", error);
+        setItems([]);
       } else {
-        const typedData = data as ConsolidatedItem[];
+        const typedData = data as ConsolidadoItem[];
         setItems(typedData);
-        const total = typedData.reduce((sum, item) => sum + item.costo_estimado, 0);
-        setTotalCost(total);
+        const totalFreight = typedData.reduce((sum, item) => sum + item.costo_flete_total, 0);
+        setTotalFreightCost(totalFreight);
       }
       setLoading(false);
     };
 
     fetchConsolidado();
-  }, [activeTab]); // <- El efecto se ejecuta cada vez que cambiamos de pestaña
+  }, [activeTab]);
 
   const handlePrint = () => window.print();
-  const handleExportPDF = () => window.open(`${backendUrl}/exportar_consolidado_pdf`, '_blank');
+
+  // --- CORRECCIÓN AQUÍ ---
+  // Ahora pasamos el filtro activo como un parámetro en la URL
+  const handleExportPDF = () => {
+    if (items.length === 0) {
+      alert('No hay datos en la vista actual para exportar.');
+      return;
+    }
+    window.open(`${backendUrl}/exportar_consolidado_pdf?filter=${activeTab}`, '_blank');
+  };
 
   return (
     <div className="container mt-4">
@@ -53,10 +58,9 @@ export default function ConsolidadoPage() {
       <p className="text-muted">Lista de compras generada a partir de todos los pedidos facturados.</p>
       
       <div className="d-flex justify-content-between align-items-center mb-3">
-        {/* Pestañas de Navegación */}
         <ul className="nav nav-tabs">
           <li className="nav-item">
-            <button className={`nav-link ${activeTab === 'Total' ? 'active' : ''}`} onClick={() => setActiveTab('Total')}>
+            <button className={`nav-link ${activeTab === 'Todos' ? 'active' : ''}`} onClick={() => setActiveTab('Todos')}>
               Consolidado TOTAL
             </button>
           </li>
@@ -66,18 +70,14 @@ export default function ConsolidadoPage() {
             </button>
           </li>
           <li className="nav-item">
-            <button className={`nav-link ${activeTab === 'CostoConFlete' ? 'active' : ''}`} onClick={() => setActiveTab('CostoConFlete')}>
+            <button className={`nav-link ${activeTab === 'Con Flete' ? 'active' : ''}`} onClick={() => setActiveTab('Con Flete')}>
               Consolidado Flete
             </button>
           </li>
         </ul>
-        {/* Botones de Acción */}
         <div>
           <button onClick={handleExportPDF} className="btn btn-success">
-              <i className="fas fa-file-pdf me-2"></i>Exportar
-          </button>
-          <button onClick={handlePrint} className="btn btn-secondary ms-2">
-              <i className="fas fa-print me-2"></i>Imprimir
+            <i className="fas fa-file-pdf me-2"></i>Exportar
           </button>
         </div>
       </div>
@@ -85,43 +85,45 @@ export default function ConsolidadoPage() {
       <div className="card mt-3 shadow-sm">
         <div className="card-body">
           <h5 className="card-title">
-            {activeTab === 'Total' && 'Consolidado Total de Pedidos Facturados'}
+            {activeTab === 'Todos' && 'Consolidado Total de Pedidos Facturados'}
             {activeTab === 'Normal' && 'Consolidado para Clientes Normales'}
-            {activeTab === 'CostoConFlete' && 'Consolidado para Clientes con Flete'}
+            {activeTab === 'Con Flete' && 'Consolidado para Clientes con Flete'}
           </h5>
-            {loading ? (
-              <div className="text-center p-5">Cargando reporte...</div>
-            ) : (
+          {loading ? (
+            <div className="text-center p-5">Cargando reporte...</div>
+          ) : (
+            <>
               <table className="table table-striped">
-                {/* ... (El resto de la tabla es igual) ... */}
-                <thead>
+                <thead className="table-light">
                   <tr>
-                      <th>Producto</th>
-                      <th className='text-end'>Cantidad a Comprar</th>
-                      <th className='text-end'>Costo Estimado</th>
+                    <th>Producto</th>
+                    <th className='text-end'>Cantidad a Comprar</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.length > 0 ? items.map((item) => (
-                    <tr key={item.producto_nombre}>
-                      <td>{item.producto_nombre}</td>
+                    <tr key={item.producto}>
+                      <td>{item.producto}</td>
                       <td className='text-end'>{item.cantidad_total}</td>
-                      <td className='text-end'>${item.costo_estimado.toLocaleString('es-AR')}</td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={3} className="text-center p-4">No hay productos en esta categoría.</td>
+                      <td colSpan={2} className="text-center p-4">No hay productos en esta categoría.</td>
                     </tr>
                   )}
                 </tbody>
-                <tfoot>
-                  <tr className="table-light fw-bold">
-                      <td colSpan={2} className="text-end">Total Estimado:</td>
-                      <td className="text-end">${totalCost.toLocaleString('es-AR')}</td>
-                  </tr>
-                </tfoot>
               </table>
-            )}
+              {activeTab === 'Con Flete' && totalFreightCost > 0 && (
+                <div className="alert alert-info mt-4">
+                  <h5 className="alert-heading">🚚 Costo Total de Flete</h5>
+                  <p className="mb-0">
+                    El costo total de flete para los pedidos de esta categoría es de 
+                    <strong className="ms-2 fs-5">${totalFreightCost.toLocaleString('es-AR')}</strong>.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
