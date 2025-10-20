@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import type { Client } from '../clientes/page'; 
+import type { Client } from '../(app)/clientes/page'; 
 
 interface ClientFormProps {
   clientToEdit: Client | null;

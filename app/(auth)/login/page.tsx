@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '../../lib/supabaseClient' // Ajustamos la ruta
+import { supabase } from '@/lib/supabaseClient';
 
 export default function Login() {
   const [email, setEmail] = useState('')

@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react' // Añadimos useCallback
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link' // Importamos Link para el botón de detalle
 import ManualOrderModal from '@/app/components/ManualOrderModal' // Importamos el modal de carga manual
 
@@ -17,12 +17,21 @@ interface Order {
 }
 type StatusFilter = 'confirmado' | 'facturado' | 'archivado' | 'todos';
 
-
-export default function PedidosPage() {
+export default function PedidosPageWrapper() {
+  return (
+    <Suspense fallback={<div className="container mt-4 text-center p-5">Cargando pedidos...</div>}>
+      <PedidosPage />
+    </Suspense>
+  )
+}
+function PedidosPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<StatusFilter>('confirmado')
   const router = useRouter()
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // El filtro ahora se deriva de la URL, con 'confirmado' como valor por defecto.
+  const filter: StatusFilter = (searchParams.get('estado') as StatusFilter) || 'confirmado';
 
   // --- NUEVOS ESTADOS PARA LOS MODALES ---
   const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
@@ -30,12 +39,14 @@ export default function PedidosPage() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
 
   // Movemos fetchOrders fuera de useEffect para poder reutilizarla
-  const fetchOrders = useCallback(async () => {
+const fetchOrders = useCallback(async (currentFilter: StatusFilter) => {
     setLoading(true)
     let query = supabase.from('orders').select('*, users(full_name)').order('created_at', { ascending: false })
-    if (filter !== 'todos') {
-      query = query.eq('status', filter)
+    
+    if (currentFilter !== 'todos') {
+      query = query.eq('status', currentFilter)
     }
+
     const { data, error } = await query
     if (error) {
       console.error('Error fetching orders:', error)
@@ -43,15 +54,21 @@ export default function PedidosPage() {
       setOrders(data as Order[])
     }
     setLoading(false)
-  }, [filter]); // Se vuelve a crear si el filtro cambia
+  }, []);
 
   useEffect(() => {
-    fetchOrders()
-  }, [fetchOrders])
+    // Solo se ejecuta si `filter` (de la URL) o `fetchOrders` cambian.
+    fetchOrders(filter)
+  }, [filter, fetchOrders])
+
+  const handleFilterChange = (newFilter: StatusFilter) => {
+      // Actualiza el parámetro 'estado' en la URL sin recargar la página.
+      router.replace(`${pathname}?estado=${newFilter}`);
+    };
 
   // --- NUEVAS FUNCIONES PARA LOS MODALES ---
   const handleOrderCreated = () => {
-    fetchOrders(); // Refresca la lista después de crear un pedido
+    fetchOrders(filter); // Refresca la lista manteniendo el filtro actual
   };
 
   const handleDeleteClick = (e: React.MouseEvent, order: Order) => {
@@ -106,10 +123,10 @@ export default function PedidosPage() {
       </div>
       
       <div className="btn-group mb-4" role="group">
-        <button type="button" onClick={() => setFilter('confirmado')} className={`btn ${filter === 'confirmado' ? 'btn-primary' : 'btn-outline-primary'}`}>Confirmados</button>
-        <button type="button" onClick={() => setFilter('facturado')} className={`btn ${filter === 'facturado' ? 'btn-primary' : 'btn-outline-primary'}`}>Facturados</button>
-        <button type="button" onClick={() => setFilter('archivado')} className={`btn ${filter === 'archivado' ? 'btn-primary' : 'btn-outline-primary'}`}>Archivados</button>
-        <button type="button" onClick={() => setFilter('todos')} className={`btn ${filter === 'todos' ? 'btn-primary' : 'btn-outline-primary'}`}>Todos</button>
+        <button type="button" onClick={() => handleFilterChange('confirmado')} className={`btn ${filter === 'confirmado' ? 'btn-primary' : 'btn-outline-primary'}`}>Confirmados</button>
+        <button type="button" onClick={() => handleFilterChange('facturado')} className={`btn ${filter === 'facturado' ? 'btn-primary' : 'btn-outline-primary'}`}>Facturados</button>
+        <button type="button" onClick={() => handleFilterChange('archivado')} className={`btn ${filter === 'archivado' ? 'btn-primary' : 'btn-outline-primary'}`}>Archivados</button>
+        <button type="button" onClick={() => handleFilterChange('todos')} className={`btn ${filter === 'todos' ? 'btn-primary' : 'btn-outline-primary'}`}>Todos</button>
       </div>
 
       <div className="card shadow-sm">
@@ -131,7 +148,7 @@ export default function PedidosPage() {
                 </thead>
                 <tbody>
                   {orders.map((order) => (
-                    <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/pedidos/${order.id}`)}>
+                    <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/pedidos/${order.id}?estado=${filter}`)}>
                       <td>{order.users?.full_name || 'N/A'}</td>
                       <td>{new Date(order.created_at).toLocaleDateString('es-AR')}</td>
                       <td>
@@ -144,7 +161,7 @@ export default function PedidosPage() {
                         {order.total_amount ? `$${order.total_amount.toLocaleString('es-AR')}` : '-'}
                       </td>
                       <td className="text-end">
-                        <Link href={`/pedidos/${order.id}`} className="btn btn-sm btn-outline-primary" onClick={(e) => e.stopPropagation()}>
+                        <Link href={`/pedidos/${order.id}?estado=${filter}`} className="btn btn-sm btn-outline-primary" onClick={(e) => e.stopPropagation()}>
                            <i className="fas fa-eye"></i>
                         </Link>
                         {/* --- BOTÓN DE ELIMINAR --- */}

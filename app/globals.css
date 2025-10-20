@@ -1,49 +1,71 @@
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  /* Evita que aparezca una barra de scroll horizontal cuando el menú se oculta */
-  overflow-x: hidden; 
-}
-
-/* --- INICIO DE LA LÓGICA DEL SIDEBAR DESPLEGABLE --- */
-
-.main-content {
-  flex-grow: 1; /* Permite que el contenido principal ocupe el espacio restante */
-  transition: padding-left 0.3s ease-in-out; /* Anima el padding para un efecto suave */
-  padding: 20px;
+/* app/globals.css */
+body, html {
+  overflow-x: hidden;
   width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #f8f9fa; 
 }
 
+/* --- ESTILOS DEL SIDEBAR --- */
 .sidebar {
-  width: 250px; /* Ancho del sidebar abierto */
-  flex-shrink: 0; /* Evita que el sidebar se encoja */
-  transition: margin-left 0.3s ease-in-out; /* Animación suave */
+  width: 280px; 
+  flex-shrink: 0; /* Evita que el sidebar se encoja si el contenido no cabe */
+  transition: width 0.3s ease-in-out;
 }
 
 .sidebar.closed {
-  margin-left: -250px; /* Mueve el sidebar fuera de la pantalla */
+  width: 80px; 
 }
 
-/* --- FIN DE LA LÓGICA DEL SIDEBAR DESPLEGABLE --- */
+.sidebar.closed .nav-link {
+  justify-content: center;
+}
+.sidebar.closed .nav-link i {
+  margin-right: 0 !important;
+}
+.sidebar.closed .nav-link span,
+.sidebar.closed h3,
+.sidebar.closed .dropdown {
+  /* Opcional pero recomendado: oculta el texto suavemente */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s linear;
+}
+
+
+/* --- ESTILOS DEL CONTENIDO PRINCIPAL --- */
+.main-content-wrapper {
+  flex-grow: 1; /* Le dice al contenido que ocupe todo el espacio disponible */
+  transition: width 0.3s ease-in-out; /* Sincroniza la transición con el sidebar */
+  min-width: 0; /* Importante para que flexbox se comporte correctamente */
+}
+
+/* Oculta el texto del título y del nombre de usuario */
+.sidebar.closed h3 > span,
+.sidebar.closed .dropdown strong {
+  display: none;
+}
+
+/* Centra el logo principal cuando está cerrado */
+.sidebar.closed h3 {
+  justify-content: center;
+  display: flex; /* Necesario para que justify-content funcione */
+}
+
+/* Elimina el margen del logo y del ícono de usuario cuando está cerrado */
+.sidebar.closed h3 i,
+.sidebar.closed .dropdown i {
+  margin-right: 0 !important;
+}
+
+/* Centra el ícono de usuario cuando está cerrado */
+.sidebar.closed .dropdown > a {
+  justify-content: center;
+}
+
+/* Oculta la flechita del dropdown cuando está cerrado */
+.sidebar.closed .dropdown-toggle::after {
+  display: none;
+}

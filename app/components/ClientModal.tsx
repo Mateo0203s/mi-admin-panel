@@ -1,7 +1,7 @@
 'use client'
 
 import ClientForm from './ClientForm';
-import type { Client } from '../clientes/page'; // Importamos el tipo desde la página principal
+import type { Client } from '../(app)/clientes/page'; // Importamos el tipo desde la página principal
 
 interface ClientModalProps {
   isOpen: boolean;

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { createOrderFromTextAndRevalidate } from "@/app/pedidos/actions";
+import { createOrderFromTextAndRevalidate } from "@/app/(app)/pedidos/actions";
 interface User {
   id: string;
   full_name: string;

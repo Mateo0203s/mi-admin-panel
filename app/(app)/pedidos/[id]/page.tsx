@@ -14,6 +14,7 @@ interface Product {
   id: string;
   name: string;
   type?: string;
+  sale_price?: number;
   cost_price?: number;
 }
 interface OrderItem {
@@ -47,6 +48,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const orderId = resolvedParams.id;
 
   const searchParams = useSearchParams();
+  const estado = searchParams.get('estado'); // <-- Para el filtro de la página de pedidos
   const filtro = searchParams.get('filtro');
 
   const [order, setOrder] = useState<OrderDetails | null>(null);
@@ -144,7 +146,7 @@ const fetchOrder = useCallback(async () => {
       setLoading(true);
       await fetchOrder();
 
-      const { data: productsData } = await supabase.from('products').select('id, name').order('name');
+      const { data: productsData } = await supabase.from('products').select('id, name, sale_price, cost_price').order('name');
       if (productsData) setAllProducts(productsData);
 
       setLoading(false);
@@ -187,17 +189,30 @@ const displayTotal = useMemo(() => {
     setEditedItems(editedItems.filter(item => item.id !== itemId));
   };
   
-  const handleAddItem = (product: Product) => {
+const handleAddItem = (product: Product) => {
     if (editedItems.some(item => item.product_id === product.id)) return;
-        const newItem: OrderItem = {
-            id: `temp-${product.id}`,
-            product_id: product.id,
-            products: [product],
-            quantity: 1, unit_price: 0, total_price: 0,
-        };
-        setEditedItems([...editedItems, newItem]);
-        setSearchTerm('');
-    }
+
+    // 1. Determinar el tipo de cliente para saber qué precio usar
+    const clientType = order?.users?.[0]?.client_type;
+    
+    // 2. Elegir el precio correcto. Si no está definido, se usa 0 como respaldo.
+    const priceToUse = (clientType === 'Con Flete' || clientType === 'mayorista')
+      ? product.cost_price || 0
+      : product.sale_price || 0;
+
+    // 3. Crear el nuevo item con cantidad 1 y el precio correcto
+    const newItem: OrderItem = {
+      id: `temp-${product.id}`, // ID temporal para la UI
+      product_id: product.id,
+      products: [product],
+      quantity: 1,              // Cantidad por defecto es 1
+      unit_price: priceToUse,   // Precio unitario correcto
+      total_price: priceToUse,  // El total es igual al unitario porque la cantidad es 1
+    };
+
+    setEditedItems([...editedItems, newItem]);
+    setSearchTerm(''); // Limpia el buscador después de añadir
+  };
 
   const handleSaveChanges = async () => {
     if (!order) return;
@@ -282,7 +297,7 @@ const getProductName = (item: OrderItem) => {
 
   return (
     <div className="container mt-4">
-      <Link href={filtro === 'huevos' ? "/huevos" : "/pedidos"}>
+      <Link href={estado ? `/pedidos?estado=${estado}` : (filtro === 'huevos' ? "/huevos" : "/pedidos")}>
         {filtro === 'huevos' ? "❮ Volver al Dashboard de Huevos" : "❮ Volver a Pedidos"}
       </Link>
 
