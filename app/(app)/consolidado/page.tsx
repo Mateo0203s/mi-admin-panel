@@ -16,7 +16,7 @@ export default function ConsolidadoPage() {
   const [totalFreightCost, setTotalFreightCost] = useState(0);
   const [activeTab, setActiveTab] = useState<FilterType>('Todos');
 
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://bot-lahuerta.ngrok.app';
 
   useEffect(() => {
     const fetchConsolidado = async () => {

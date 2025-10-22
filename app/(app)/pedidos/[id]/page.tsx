@@ -60,7 +60,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://bot-lahuerta.ngrok.app';
 // --- BLOQUE AÑADIDO: FORMATEAR PRODUCTOS PARA REACT-SELECT ---
 const productOptions = useMemo(() => {
   return allProducts.map(product => ({
@@ -245,6 +245,7 @@ const handleAddItem = (product: Product) => {
       url += '?filtro=huevos';
     }
     window.open(url, '_blank');
+
   };
   
   const handleMarkAsPaid = async () => {

@@ -24,8 +24,21 @@ export default function ProductosPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [productToArchive, setProductToArchive] = useState<Product | null>(null);
   const [activeTab, setActiveTab] = useState<'activo' | 'inactivo'>('activo');
-  
+  const [faltantes, setFaltantes] = useState<string[]>([]);
 
+
+  const handleToggleFaltante = (productId: string) => {
+      setFaltantes(prevFaltantes => {
+        // Si el ID ya estaba en la lista, lo sacamos (desmarcar)
+        if (prevFaltantes.includes(productId)) {
+          return prevFaltantes.filter(id => id !== productId);
+        } else {
+          // Si no estaba, lo agregamos (marcar)
+          return [...prevFaltantes, productId];
+        }
+      });
+    };
+  
   const fetchProducts = async () => {
     const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
     if (error) console.error('Error fetching products:', error)
@@ -70,19 +83,26 @@ export default function ProductosPage() {
     updateProductStatus(product.id, 'activo', '¡Producto reactivado con éxito!');
   };
 
-const handleSyncAllPrices = async () => {
-    // Pedimos confirmación para una acción tan importante
-    if (confirm('¿Estás seguro de que quieres sincronizar los precios de TODOS los productos en TODOS los pedidos activos (confirmados y facturados)? Esta acción no se puede deshacer.')) {
-      setIsSyncing(true);
-      const { data, error } = await supabase.rpc('sincronizar_precios_todos_los_productos');
-      
-      if (error) {
-        alert('Error al sincronizar los precios: ' + error.message);
-      } else {
-        alert(data); // Muestra el mensaje de éxito de la función
+  const handleAdjustAndSync = async () => {
+      const confirmacion = confirm(
+        `Vas a realizar dos acciones:\n\n1. ELIMINAR ${faltantes.length} producto(s) marcados como faltantes de todos los pedidos activos.\n2. ACTUALIZAR los precios de los productos restantes en esos mismos pedidos.\n\n¿Estás seguro de que quieres continuar?`
+      );
+
+      if (confirmacion) {
+        setIsSyncing(true);
+        // Llamamos a la NUEVA función orquestadora
+        const { data, error } = await supabase.rpc('ajustar_y_sincronizar_pedidos', {
+          p_ids_faltantes: faltantes 
+        });
+        
+        if (error) {
+          alert('Error al ajustar los pedidos: ' + error.message);
+        } else {
+          alert(data); // Muestra el mensaje de éxito combinado
+          setFaltantes([]); // Limpiamos la selección
+        }
+        setIsSyncing(false);
       }
-      setIsSyncing(false);
-    }
   };
 
 
@@ -121,24 +141,14 @@ return (
         {/* Envolvemos los botones en un div para alinearlos correctamente */}
         <div className="d-flex gap-2">
           {/* --- BOTÓN NUEVO DE SINCRONIZACIÓN --- */}
-          <button 
-            onClick={handleSyncAllPrices} 
-            className="btn btn-warning btn-lg"
-            disabled={isSyncing}
-            title="Actualiza los precios en todos los pedidos activos (confirmados y facturados) con los valores actuales de esta lista."
-          >
-            {isSyncing ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                Sincronizando...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-sync-alt me-2"></i>
-                Sincronizar Precios
-              </>
-            )}
-          </button>
+        <button 
+          onClick={handleAdjustAndSync} 
+          className="btn btn-warning btn-lg"
+          disabled={isSyncing}
+          title="Elimina los faltantes marcados y actualiza los precios en todos los pedidos activos."
+        >
+          {isSyncing ? 'Procesando...' : `Ajustar y Sincronizar (${faltantes.length})`}
+        </button>
           
           {/* --- Tu botón existente de Añadir Producto --- */}
           <button onClick={() => handleOpenModal(null)} className="btn btn-primary btn-lg">
@@ -185,12 +195,15 @@ return (
                   <th className="text-end">Costo</th>
                   <th className="text-end">Venta</th>
                   <th className="text-center">Estado</th>
+                  <th className="text-center">Marcar Faltante</th>
                   <th className="text-end">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProducts.map((product) => (
+                  
                   <tr key={product.id}>
+                    <tr key={product.id} className={faltantes.includes(product.id) ? 'table-warning' : ''}></tr>
                     <td>{product.name}</td>
                     <td className="text-center">
                       {product.type === 'huevo' ? product.stock_quantity : '-'}
@@ -222,6 +235,16 @@ return (
                           title="Reactivar Producto"
                         >
                           <i className="fas fa-undo"></i>
+                        </button>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      {activeTab === 'activo' && (
+                        <button
+                          onClick={() => handleToggleFaltante(product.id)}
+                          className={`btn btn-sm ${faltantes.includes(product.id) ? 'btn-danger' : 'btn-outline-warning'}`}
+                        >
+                          {faltantes.includes(product.id) ? <i className="fas fa-check"></i> : 'Marcar'}
                         </button>
                       )}
                     </td>
